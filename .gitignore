@@ -133,3 +133,6 @@ dmypy.json
 
 # Pycharm
 /.idea
+
+# Stuff inside SC2 install dir
+Install/*
