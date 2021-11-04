@@ -136,3 +136,9 @@ dmypy.json
 
 # Stuff inside SC2 install dir
 Install/*
+
+
+# Added by cargo
+
+/target
+LastRun.SC2Replay

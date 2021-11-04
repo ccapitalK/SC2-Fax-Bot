@@ -1,0 +1,9 @@
+[package]
+name = "SC2-Fax-Bot"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rust-sc2 = { version = "^1.1.0", git = "https://github.com/ccapitalK/rust-sc2", features = ["wine_sc2"] }
