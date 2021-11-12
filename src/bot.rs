@@ -13,7 +13,16 @@ const HATCH_CAP: usize = 2;
 
 impl FaxBot {
     fn energy_cost(&self, ability: AbilityId) -> Option<usize> {
-        Some(25) //Some(self.game_data.abilities.get(&ability)?.energy_cost)
+        if ability == AbilityId::EffectInjectLarva {
+            Some(25)
+        } else {
+            // FIXME: You'd expect something like `Some(self.game_data.abilities.get(&ability)?.energy_cost)`
+            //       to work, but apparently the SC2 API doesn't provide this info :P
+            unimplemented!()
+        }
+    }
+    fn least_busy_hatch(&self) -> Option<Unit> {
+        self.units.my.townhalls.filter(|hatch| hatch.is_ready() && hatch.orders().len() < 5).min(|hatch| hatch.orders().len()).map(|h| h.to_owned())
     }
     fn calculate_pending_supply(&self) -> usize {
         let supply_unit = self.race_values.supply;
@@ -56,8 +65,7 @@ impl FaxBot {
             }
         }
         if self.count_unit(UnitTypeId::SpawningPool) > 0 && self.count_unit(UnitTypeId::Queen) < HATCH_CAP {
-            // TODO: This should be chosen by lowest amount of queued units
-            if let Some(hatch) = self.units.my.townhalls.min(|hatch| 1) {
+            if let Some(hatch) = self.least_busy_hatch() {
                 hatch.train(UnitTypeId::Queen, true);
             }
         }
@@ -66,6 +74,7 @@ impl FaxBot {
     fn perform_micro(&mut self, _iteration: usize) -> SC2Result<()> {
         let num_lings = self.counter().count(UnitTypeId::Zergling);
         if num_lings > self.peak_lings {
+            println!("A moving with {} zerglings", num_lings);
             util::a_move(&self.units.my.units.of_type(UnitTypeId::Zergling).idle(), self.enemy_start, false);
             self.peak_lings = num_lings;
         }
