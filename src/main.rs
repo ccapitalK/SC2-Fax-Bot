@@ -3,6 +3,7 @@ extern crate clap;
 
 pub mod util;
 pub mod bot;
+pub mod state;
 
 use rust_sc2::prelude::*;
 use rand::prelude::*;
