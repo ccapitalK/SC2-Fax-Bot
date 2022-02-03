@@ -6,6 +6,7 @@ pub struct BotState {
     pub expansion_order: Vec<rust_sc2::bot::Expansion>,
     pub peak_roaches: usize,
     pub desired_workers: usize,
+    pub micro: crate::micro::MicroState,
 }
 
 pub trait GetBotState {

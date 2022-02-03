@@ -1,12 +1,12 @@
 use rust_sc2::prelude::*;
 
-use crate::util;
 use crate::state::{BotState, GetBotState};
+use float_ord::FloatOrd;
 
 #[bot]
 #[derive(Default)]
 pub struct FaxBot {
-    state: BotState,
+    pub state: BotState,
 }
 
 impl GetBotState for FaxBot {
@@ -21,7 +21,7 @@ impl GetBotState for FaxBot {
 const HATCH_CAP: usize = 2;
 
 impl FaxBot {
-    fn energy_cost(&self, ability: AbilityId) -> Option<usize> {
+    pub fn energy_cost(&self, ability: AbilityId) -> Option<usize> {
         // FIXME: You'd expect something like `Some(self.game_data.abilities.get(&ability)?.energy_cost)`
         //        to work, but apparently the SC2 API doesn't provide ability energy costs anywhere :(
         match ability {
@@ -54,7 +54,7 @@ impl FaxBot {
     fn count_unit(&self, building_id: UnitTypeId) -> usize {
         self.counter().count(building_id) + self.counter().ordered().count(building_id)
     }
-    fn perform_building(&mut self, _iteration: usize) -> SC2Result<()> {
+    pub fn perform_building(&mut self, _iteration: usize) -> SC2Result<()> {
         let main_base = self.start_location.towards(self.game_info.map_center, 5.0);
         let num_hatcheries = self.count_unit(UnitTypeId::Hatchery);
         if self.count_unit(UnitTypeId::SpawningPool) < 1 {
@@ -75,7 +75,7 @@ impl FaxBot {
             }
         }
     }
-    fn perform_training(&mut self, _iteration: usize) -> SC2Result<()> {
+    pub fn perform_training(&mut self, _iteration: usize) -> SC2Result<()> {
         for l in self.units.my.larvas.idle() {
             let num_workers = self.supply_workers as usize + self.counter().ordered().count(UnitTypeId::Drone);
             if self.calculate_pending_supply() < std::cmp::min(self.supply_used as usize + 4, 200) {
@@ -95,62 +95,6 @@ impl FaxBot {
         }
         Ok(())
     }
-    fn allocate_workers(&mut self) -> SC2Result<()> {
-        let mut surplus_workers = Units::new();
-        let mut undermined_resources = vec![];
-        surplus_workers.extend(self.units.my.workers.idle());
-        for base in self.units.my.townhalls.ready() {
-            let assigned = base.assigned_harvesters().unwrap();
-            let ideal = base.ideal_harvesters().unwrap();
-            if assigned < ideal {
-                let mineral_patch = self.units.mineral_fields.closest(base.position()).unwrap();
-                for _ in 0..(ideal - assigned) {
-                    undermined_resources.push(mineral_patch.tag());
-                }
-            } else if assigned > ideal {
-                let local_minerals = self.units.mineral_fields.iter().closer(11.0, base.position()).map(|u| u.tag()).collect::<Vec<_>>();
-                let nearby_miners = self.units.my.workers
-                    .filter(|u| u.target_tag().map_or(
-                        false,
-                        |tag| local_minerals.contains(&tag) || (u.is_carrying_minerals() && tag == base.tag())));
-                surplus_workers.extend(nearby_miners.iter().take((assigned - ideal) as usize).cloned());
-            }
-        }
-        for gas in &self.units.my.gas_buildings {
-            let assigned = gas.assigned_harvesters().unwrap();
-            let ideal = gas.ideal_harvesters().unwrap();
-            if assigned < ideal {
-                for _ in 0..(ideal - assigned) {
-                    undermined_resources.push(gas.tag());
-                }
-            }
-        }
-        for (worker, resource) in surplus_workers.iter().zip(undermined_resources.iter()) {
-            worker.gather(*resource, false);
-        }
-        Ok(())
-    }
-    fn perform_micro(&mut self, _iteration: usize) -> SC2Result<()> {
-        let num_roaches = self.counter().count(UnitTypeId::Roach);
-        if num_roaches > self.state.peak_roaches {
-            println!("A moving with {} roaches", num_roaches);
-            util::a_move(&self.units.my.units.of_type(UnitTypeId::Roach).idle(), self.enemy_start, false);
-            self.state.peak_roaches = num_roaches;
-        }
-        for queen in &self.units.my.units.filter(|q| q.type_id() == UnitTypeId::Queen
-            && q.energy().unwrap() as usize >= self.energy_cost(AbilityId::EffectInjectLarva).unwrap()
-            && q.is_idle()
-        ) {
-            let idle_hatcheries = self.units.my.townhalls.filter(
-                |hatch| !hatch.buffs().contains(&BuffId::QueenSpawnLarvaTimer));
-            if let Some(hatch) = idle_hatcheries.closest(queen.position()) {
-                println!("Going to inject");
-                queen.command(AbilityId::EffectInjectLarva, Target::Tag(hatch.tag()), true);
-            }
-        }
-        self.allocate_workers()?;
-        Ok(())
-    }
 }
 
 impl Player for FaxBot {
@@ -159,9 +103,19 @@ impl Player for FaxBot {
     }
     fn on_start(&mut self) -> SC2Result<()> {
         let start_location = self.start_location;
+        let enemy_starts = self.game_info.start_locations.iter()
+            .map(|p| *p)
+            .filter(|p| *p != start_location)
+            .collect::<Vec<_>>();
+        let mut points = self.expansions.iter()
+            .map(|e| e.loc)
+            .filter(|p| *p != start_location)
+            .collect::<Vec<_>>();
+        points.sort_by_cached_key(|p| enemy_starts.iter().map(|s| FloatOrd(p.distance(s))).min());
         let mut state = self.get_state_mut();
         state.bases.push(start_location);
         state.desired_workers = 22;
+        state.micro.base_locations_by_expansion_order = points;
         println!("Started bot");
         Ok(())
     }
