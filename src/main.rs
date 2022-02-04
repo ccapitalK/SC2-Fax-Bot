@@ -1,9 +1,10 @@
 #[macro_use]
 extern crate clap;
 
-pub mod bot;
-pub mod state;
-pub mod micro;
+mod bot;
+mod state;
+mod micro;
+mod m_macro;
 
 use rust_sc2::prelude::*;
 use rand::prelude::*;
