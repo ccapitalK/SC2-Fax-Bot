@@ -49,7 +49,8 @@ impl Player for FaxBot {
         points.sort_by_cached_key(|p| enemy_starts.iter().map(|s| FloatOrd(p.distance(s))).min());
         let mut state = self.get_state_mut();
         state.bases.push(start_location);
-        state.desired_workers = 22;
+        state.desired_workers = 38;
+        state.desired_gasses = 2;
         state.micro.base_locations_by_expansion_order = points;
         println!("Started bot");
         Ok(())

@@ -1,6 +1,5 @@
 use rust_sc2::prelude::*;
 
-use crate::state::{BotState, GetBotState};
 use crate::bot::FaxBot;
 
 const HATCH_CAP: usize = 2;
@@ -8,13 +7,12 @@ const HATCH_CAP: usize = 2;
 impl FaxBot {
     fn ensure_taken_gasses(&mut self, num_gasses: usize) {
         let current_gasses = self.count_unit(UnitTypeId::Extractor);
-        let mut build_locations = vec![];
         for base in self.state.bases.iter() {
-            if current_gasses < num_gasses {
+            if self.can_afford(UnitTypeId::Extractor, false) && current_gasses < num_gasses {
                 if let Some(nearest_free_gas) = self.find_gas_placement(*base) {
-                    build_locations.push(nearest_free_gas.position());
                     if let Some(w) = self.units.my.workers.first() {
                         w.build_gas(nearest_free_gas.tag(), false);
+                        return;
                     }
                 }
             }
@@ -31,16 +29,49 @@ impl FaxBot {
         (self.supply_cap as usize) + (supply_per_provider.floor() as usize) * self.counter().ordered().count(supply_unit)
     }
 
+    fn determine_best_expansion(&self) -> Option<Point2> {
+        let expansions = self.expansions.iter()
+            .filter(|e| e.loc != self.start_location && e.geysers.len() >= 2)
+            .map(|e| e.loc);
+        expansions.closest(self.start_location)
+    }
+
+    fn take_expansion(&mut self, position: Point2) -> SC2Result<()> {
+        if self.can_afford(UnitTypeId::Hatchery, false) {
+            println!("Expanding");
+            self.create_building(UnitTypeId::Hatchery, position);
+            self.state.bases.push(position);
+        }
+        Ok(())
+    }
+
+    pub fn set_rallies(&mut self) {
+        if let Some(pos) = self.state.bases.iter().closest(self.enemy_start) {
+            let rally_location = pos.towards(self.enemy_start, 7.0);
+            for hatch in self.units.my.townhalls.iter() {
+                if !hatch.rally_targets().iter().any(|rt| rt.point == rally_location) {
+                    hatch.command(AbilityId::RallyUnits, Target::Pos(rally_location), false);
+                }
+            }
+        }
+    }
+
     pub fn perform_building(&mut self, _iteration: usize) -> SC2Result<()> {
+        self.set_rallies();
+        if self.state.desired_gasses == 2 && self.minerals >= 400 && self.vespene < 100 {
+            self.state.desired_gasses = 4;
+            self.state.desired_workers = 44;
+        }
         let main_base = self.start_location.towards(self.game_info.map_center, 5.0);
         let num_hatcheries = self.count_unit(UnitTypeId::Hatchery);
-        if self.count_unit(UnitTypeId::SpawningPool) < 1 {
+        if self.supply_used >= 17 && self.count_unit(UnitTypeId::SpawningPool) < 1 {
             self.create_building(UnitTypeId::SpawningPool, main_base);
-        } else if num_hatcheries < HATCH_CAP {
-            self.create_building(UnitTypeId::Hatchery, main_base);
-        } else if self.count_unit(UnitTypeId::Extractor) < 2 {
-            self.ensure_taken_gasses(2);
-        } else if self.count_unit(UnitTypeId::RoachWarren) < 1 {
+        } else if self.supply_used >= 17 && num_hatcheries < 2 {
+            let expansion = self.determine_best_expansion().unwrap();
+            self.take_expansion(expansion)?;
+        } else if self.supply_used >= 17 && self.count_unit(UnitTypeId::Extractor) < self.state.desired_gasses {
+            self.ensure_taken_gasses(self.state.desired_gasses);
+        } else if self.supply_used >= 32 && self.count_unit(UnitTypeId::RoachWarren) < 1 {
             self.create_building(UnitTypeId::RoachWarren, main_base);
         }
         Ok(())
@@ -55,9 +86,10 @@ impl FaxBot {
     }
 
     pub fn perform_training(&mut self, _iteration: usize) -> SC2Result<()> {
+        let num_hatcheries = self.count_unit(UnitTypeId::Hatchery);
         for l in self.units.my.larvas.idle() {
             let num_workers = self.supply_workers as usize + self.counter().ordered().count(UnitTypeId::Drone);
-            if self.calculate_pending_supply() < std::cmp::min(self.supply_used as usize + 4, 200) {
+            if self.calculate_pending_supply() < std::cmp::min(self.supply_used as usize + 6 * num_hatcheries, 200) {
                 if self.can_afford(UnitTypeId::Overlord, false) {
                     l.train(UnitTypeId::Overlord, false);
                 }

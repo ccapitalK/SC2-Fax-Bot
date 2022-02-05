@@ -1,6 +1,5 @@
 use rust_sc2::prelude::*;
 
-use crate::state::{BotState, GetBotState};
 use crate::bot::FaxBot;
 
 #[derive(Default)]
@@ -15,12 +14,11 @@ impl FaxBot {
         }
     }
     fn determine_most_important_target(&self) -> Point2 {
-        if let Some(unit) = self.units.enemy.all.first() {
+        if let Some(unit) = self.units.enemy.all.filter(|u| !u.is_flying()).first() {
             return unit.position();
         }
         for point in self.state.micro.base_locations_by_expansion_order.iter() {
             if self.is_hidden(*point) {
-                println!("Point {:?} is fogged", *point);
                 return *point;
             }
         }
@@ -28,8 +26,7 @@ impl FaxBot {
     }
     pub fn perform_micro(&mut self, _iteration: usize) -> SC2Result<()> {
         let num_roaches = self.counter().count(UnitTypeId::Roach);
-        if num_roaches > self.state.peak_roaches {
-            println!("A moving with {} roaches", num_roaches);
+        if num_roaches > self.state.peak_roaches || self.supply_used >= 180 {
             let army = &self.units.my.units.of_type(UnitTypeId::Roach).idle();
             let target = self.determine_most_important_target();
             self.a_move(army, target, false);
@@ -42,7 +39,6 @@ impl FaxBot {
             let idle_hatcheries = self.units.my.townhalls.filter(
                 |hatch| !hatch.buffs().contains(&BuffId::QueenSpawnLarvaTimer));
             if let Some(hatch) = idle_hatcheries.closest(queen.position()) {
-                println!("Going to inject");
                 queen.command(AbilityId::EffectInjectLarva, Target::Tag(hatch.tag()), true);
             }
         }
@@ -53,6 +49,15 @@ impl FaxBot {
         let mut surplus_workers = Units::new();
         let mut undermined_resources = vec![];
         surplus_workers.extend(self.units.my.workers.idle());
+        for gas in &self.units.my.gas_buildings {
+            let assigned = gas.assigned_harvesters().unwrap();
+            let ideal = gas.ideal_harvesters().unwrap();
+            if assigned < ideal {
+                for _ in 0..(ideal - assigned) {
+                    undermined_resources.push(gas.tag());
+                }
+            }
+        }
         for base in self.units.my.townhalls.ready() {
             let assigned = base.assigned_harvesters().unwrap();
             let ideal = base.ideal_harvesters().unwrap();
@@ -68,15 +73,6 @@ impl FaxBot {
                         false,
                         |tag| local_minerals.contains(&tag) || (u.is_carrying_minerals() && tag == base.tag())));
                 surplus_workers.extend(nearby_miners.iter().take((assigned - ideal) as usize).cloned());
-            }
-        }
-        for gas in &self.units.my.gas_buildings {
-            let assigned = gas.assigned_harvesters().unwrap();
-            let ideal = gas.ideal_harvesters().unwrap();
-            if assigned < ideal {
-                for _ in 0..(ideal - assigned) {
-                    undermined_resources.push(gas.tag());
-                }
             }
         }
         for (worker, resource) in surplus_workers.iter().zip(undermined_resources.iter()) {
