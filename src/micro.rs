@@ -32,18 +32,37 @@ impl FaxBot {
             self.a_move(army, target, false);
             self.state.peak_roaches = num_roaches;
         }
-        for queen in &self.units.my.units.filter(|q| q.type_id() == UnitTypeId::Queen
-            && q.energy().unwrap() as usize >= self.energy_cost(AbilityId::EffectInjectLarva).unwrap()
-            && q.is_idle()
-        ) {
+        {
+            self.position_queens();
             let idle_hatcheries = self.units.my.townhalls.filter(
                 |hatch| !hatch.buffs().contains(&BuffId::QueenSpawnLarvaTimer));
-            if let Some(hatch) = idle_hatcheries.closest(queen.position()) {
-                queen.command(AbilityId::EffectInjectLarva, Target::Tag(hatch.tag()), true);
+            let ready_queens = self.units.my.units.idle().filter(|q| q.type_id() == UnitTypeId::Queen
+                && q.energy().unwrap() as usize >= self.energy_cost(AbilityId::EffectInjectLarva).unwrap()
+            );
+            for hatch in idle_hatcheries.iter() {
+                if let Some(queen) = ready_queens.filter(|q| q.distance(hatch) <= 8.0).first() {
+                    queen.command(AbilityId::EffectInjectLarva, Target::Tag(hatch.tag()), true);
+                }
             }
         }
         self.allocate_workers()?;
         Ok(())
+    }
+    fn position_queens(&mut self) {
+        let mut unqueened_hatches = vec![];
+        let mut queens = self.units.my.units.filter(|u| u.type_id() == UnitTypeId::Queen).idle();
+        for hatch in self.units.my.townhalls.iter() {
+            if let Some(nearest_queen) = queens.filter(|u| u.distance(hatch) < 8.0).closest(hatch).map(|u| u.tag()) {
+                queens.remove(nearest_queen);
+            } else {
+                unqueened_hatches.push(hatch);
+            }
+        }
+        for hatch in unqueened_hatches.iter() {
+            if let Some(queen) = queens.pop() {
+                queen.move_to(Target::Pos(hatch.position()), false);
+            }
+        }
     }
     fn allocate_workers(&mut self) -> SC2Result<()> {
         let mut surplus_workers = Units::new();
