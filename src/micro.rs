@@ -75,6 +75,10 @@ impl FaxBot {
                 for _ in 0..(ideal - assigned) {
                     undermined_resources.push(gas.tag());
                 }
+            } else if assigned > ideal {
+                let nearby_miners = self.units.my.workers
+                    .filter(|u| u.distance(gas) < 8.0 && u.target_tag() == Some(gas.tag()));
+                surplus_workers.extend(nearby_miners.iter().take((assigned - ideal) as usize).cloned());
             }
         }
         for base in self.units.my.townhalls.ready() {
