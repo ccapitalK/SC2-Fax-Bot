@@ -31,7 +31,7 @@ impl FaxBot {
 
     fn determine_best_expansion(&self) -> Option<Point2> {
         let expansions = self.expansions.iter()
-            .filter(|e| e.loc != self.start_location && e.geysers.len() >= 2)
+            .filter(|e| e.base.is_none() && e.geysers.len() >= 2)
             .map(|e| e.loc);
         expansions.closest(self.start_location)
     }
@@ -40,7 +40,6 @@ impl FaxBot {
         if self.can_afford(UnitTypeId::Hatchery, false) {
             println!("Expanding");
             self.create_building(UnitTypeId::Hatchery, position);
-            self.state.bases.push(position);
         }
         Ok(())
     }
