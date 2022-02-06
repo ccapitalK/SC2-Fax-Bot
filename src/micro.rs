@@ -1,4 +1,5 @@
 use rust_sc2::prelude::*;
+use rand;
 
 use crate::bot::FaxBot;
 
@@ -22,14 +23,21 @@ impl FaxBot {
                 return *point;
             }
         }
-        self.enemy_start
+        Point2 {
+            x: rand::random::<f32>() * self.game_info.map_size.x as f32,
+            y: rand::random::<f32>() * self.game_info.map_size.y as f32,
+        }
     }
     pub fn perform_micro(&mut self, _iteration: usize) -> SC2Result<()> {
         let num_roaches = self.counter().count(UnitTypeId::Roach);
         if num_roaches > self.state.peak_roaches || self.supply_used >= 150 {
+            let num_roaches = self.units.my.units.of_type(UnitTypeId::Roach).len();
             let army = &self.units.my.units.of_type(UnitTypeId::Roach).idle();
             let target = self.determine_most_important_target();
-            self.a_move(army, target, false);
+            if army.len() > 0 {
+                println!("A-moving {}/{} roaches to {:?}", army.len(), num_roaches, target);
+                self.a_move(army, target, false);
+            }
             self.state.peak_roaches = num_roaches;
         }
         {
