@@ -7,6 +7,7 @@ pub struct BotState {
     pub peak_roaches: usize,
     pub desired_workers: usize,
     pub desired_gasses: usize,
+    pub is_under_attack: bool,
     pub micro: crate::micro::MicroState,
 }
 

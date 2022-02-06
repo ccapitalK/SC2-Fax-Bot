@@ -56,12 +56,28 @@ impl Player for FaxBot {
         Ok(())
     }
     fn on_step(&mut self, iteration: usize) -> SC2Result<()> {
+        self.determine_state_for_tick(iteration);
         self.perform_building(iteration)?;
         self.perform_training(iteration)?;
         self.perform_micro(iteration)
     }
     fn on_end(&self, _result: GameResult) -> SC2Result<()> {
         println!("Finished bot");
+        Ok(())
+    }
+    fn on_event(&mut self, event: Event) -> SC2Result<()> {
+        let army_types = [UnitTypeId::Zergling, UnitTypeId::Roach];
+        match event {
+            Event::UnitCreated(tag) => {
+                if let Some(unit) = self.units.my.units.get(tag) {
+                    if army_types.contains(&unit.type_id()) {
+                        let rally = self.get_rally_point();
+                        unit.attack(Target::Pos(rally), false);
+                    }
+                }
+            }
+            _ => {}
+        };
         Ok(())
     }
 }

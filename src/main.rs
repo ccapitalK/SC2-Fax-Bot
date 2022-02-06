@@ -5,6 +5,7 @@ mod bot;
 mod state;
 mod micro;
 mod m_macro;
+mod strategy;
 
 use rust_sc2::prelude::*;
 use rand::prelude::*;

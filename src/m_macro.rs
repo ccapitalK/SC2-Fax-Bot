@@ -45,19 +45,15 @@ impl FaxBot {
         Ok(())
     }
 
-    pub fn set_rallies(&mut self) {
+    pub fn get_rally_point(&self) -> Point2 {
         if let Some(pos) = self.state.bases.iter().closest(self.enemy_start) {
-            let rally_location = pos.towards(self.enemy_start, 7.0);
-            for hatch in self.units.my.townhalls.iter() {
-                if !hatch.rally_targets().iter().any(|rt| rt.point == rally_location) {
-                    hatch.command(AbilityId::RallyUnits, Target::Pos(rally_location), false);
-                }
-            }
+            pos.towards(self.enemy_start, 7.0)
+        } else {
+            self.start_location
         }
     }
 
     pub fn perform_building(&mut self, _iteration: usize) -> SC2Result<()> {
-        self.set_rallies();
         if self.state.desired_gasses == 2 && self.minerals >= 400 && self.vespene < 100 {
             self.state.desired_gasses = 4;
             self.state.desired_workers = 44;
@@ -93,10 +89,12 @@ impl FaxBot {
                 if self.can_afford(UnitTypeId::Overlord, false) {
                     l.train(UnitTypeId::Overlord, false);
                 }
-            } else if num_workers < self.state.desired_workers && self.can_afford(UnitTypeId::Drone, true) {
+            } else if (!self.state.is_under_attack) && num_workers < self.state.desired_workers && self.can_afford(UnitTypeId::Drone, true) {
                 l.train(UnitTypeId::Drone, false);
-            } else if self.can_afford(UnitTypeId::Roach, true) {
+            } else if self.count_unit(UnitTypeId::RoachWarren) > 0 && self.can_afford(UnitTypeId::Roach, true) {
                 l.train(UnitTypeId::Roach, false);
+            } else if self.state.is_under_attack && self.can_afford(UnitTypeId::Zergling, true) {
+                l.train(UnitTypeId::Zergling, false);
             }
         }
         if self.count_unit(UnitTypeId::SpawningPool) > 0 && self.count_unit(UnitTypeId::Queen) < HATCH_CAP {
