@@ -26,7 +26,7 @@ impl FaxBot {
     }
     pub fn perform_micro(&mut self, _iteration: usize) -> SC2Result<()> {
         let num_roaches = self.counter().count(UnitTypeId::Roach);
-        if num_roaches > self.state.peak_roaches || self.supply_used >= 180 {
+        if num_roaches > self.state.peak_roaches || self.supply_used >= 150 {
             let army = &self.units.my.units.of_type(UnitTypeId::Roach).idle();
             let target = self.determine_most_important_target();
             self.a_move(army, target, false);
