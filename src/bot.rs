@@ -78,9 +78,6 @@ impl Player for FaxBot {
                     }
                 }
             }
-            Event::ConstructionComplete(_) => {
-                self.state.map_info.dump_pathable_tiles();
-            }
             _ => {}
         };
         Ok(())

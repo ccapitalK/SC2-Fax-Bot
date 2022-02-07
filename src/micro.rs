@@ -23,10 +23,7 @@ impl FaxBot {
                 return *point;
             }
         }
-        Point2 {
-            x: rand::random::<f32>() * self.game_info.map_size.x as f32,
-            y: rand::random::<f32>() * self.game_info.map_size.y as f32,
-        }
+        self.state.map_info.get_random_point()
     }
     pub fn perform_micro(&mut self, _iteration: usize) -> SC2Result<()> {
         let num_roaches = self.counter().count(UnitTypeId::Roach);
