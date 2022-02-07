@@ -9,6 +9,7 @@ pub struct BotState {
     pub desired_gasses: usize,
     pub is_under_attack: bool,
     pub micro: crate::micro::MicroState,
+    pub map_info: crate::map::MapInfo,
 }
 
 pub trait GetBotState {

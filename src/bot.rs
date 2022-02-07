@@ -47,10 +47,13 @@ impl Player for FaxBot {
             .filter(|p| *p != start_location)
             .collect::<Vec<_>>();
         points.sort_by_cached_key(|p| enemy_starts.iter().map(|s| FloatOrd(p.distance(s))).min());
-        let mut state = self.get_state_mut();
-        state.desired_workers = 38;
-        state.desired_gasses = 2;
-        state.micro.base_locations_by_expansion_order = points;
+        self.state.desired_workers = 38;
+        self.state.desired_gasses = 2;
+        self.state.micro.base_locations_by_expansion_order = points;
+        self.state.map_info = crate::map::MapInfo::new(
+            &self.game_info.pathing_grid,
+            self.game_info.playable_area,
+        );
         println!("Started bot");
         Ok(())
     }
@@ -74,6 +77,9 @@ impl Player for FaxBot {
                         unit.attack(Target::Pos(rally), false);
                     }
                 }
+            }
+            Event::ConstructionComplete(_) => {
+                self.state.map_info.dump_pathable_tiles();
             }
             _ => {}
         };
