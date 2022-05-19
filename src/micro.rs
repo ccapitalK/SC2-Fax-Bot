@@ -3,9 +3,9 @@ use rand;
 
 use crate::bot::FaxBot;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct MicroState {
-    pub base_locations_by_expansion_order: Vec<Point2>,
+    pub enemy_base_locations_by_expansion_order: Vec<Point2>,
 }
 
 impl FaxBot {
@@ -18,7 +18,7 @@ impl FaxBot {
         if let Some(unit) = self.units.enemy.all.filter(|u| !u.is_flying()).first() {
             return unit.position();
         }
-        for point in self.state.micro.base_locations_by_expansion_order.iter() {
+        for point in self.state.micro.enemy_base_locations_by_expansion_order.iter() {
             if self.is_hidden(*point) {
                 return *point;
             }

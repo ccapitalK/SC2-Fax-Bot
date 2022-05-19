@@ -1,6 +1,7 @@
 use rust_sc2::prelude::*;
 
 use crate::bot::FaxBot;
+use float_ord::FloatOrd;
 
 impl FaxBot {
     pub fn determine_state_for_tick(&mut self, _iteration: usize) {
@@ -12,6 +13,27 @@ impl FaxBot {
             println!("Under attack? {}", is_under_attack);
         }
         self.state.is_under_attack = is_under_attack;
+        {
+            let mut expansions = self.expansions.clone();
+            let mut unaccounted_mineral_workers = (self.state.desired_workers - 3 * self.state.desired_gasses) as isize;
+            expansions.sort_by_key(|u| FloatOrd(u.loc.distance(self.start_location)));
+            let mut desired_bases = 0;
+            for base in expansions {
+                if base.alliance == Alliance::Enemy {
+                    continue;
+                }
+                // println!("{} {}", unaccounted_mineral_workers, base.minerals.len());
+                if base.minerals.len() > 0 {
+                    unaccounted_mineral_workers -= 2 * base.minerals.len() as isize;
+                    desired_bases += 1;
+                }
+                if unaccounted_mineral_workers <= 0 {
+                    break;
+                }
+            }
+            self.state.desired_bases = desired_bases;
+        }
         self.state.bases = self.units.my.townhalls.iter().map(|th| th.position()).collect();
+        // println!("\n\n\nState: {:?}", self.state);
     }
 }

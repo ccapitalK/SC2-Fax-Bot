@@ -29,6 +29,12 @@ pub struct MapInfo {
     pub zero_offset: Point2,
 }
 
+impl std::fmt::Debug for MapInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MapInfo").finish()
+    }
+}
+
 pub fn dump_pixel_map(map: &PixelMap) {
     for y in (0..(map.len_of(ndarray::Axis(1)))).rev() {
         for x in 0..(map.len_of(ndarray::Axis(0))) {

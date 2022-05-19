@@ -49,7 +49,8 @@ impl Player for FaxBot {
         points.sort_by_cached_key(|p| enemy_starts.iter().map(|s| FloatOrd(p.distance(s))).min());
         self.state.desired_workers = 38;
         self.state.desired_gasses = 2;
-        self.state.micro.base_locations_by_expansion_order = points;
+        self.state.desired_bases = 2;
+        self.state.micro.enemy_base_locations_by_expansion_order = points;
         self.state.map_info = crate::map::MapInfo::new(
             &self.game_info.pathing_grid,
             self.game_info.playable_area,
@@ -68,7 +69,7 @@ impl Player for FaxBot {
         Ok(())
     }
     fn on_event(&mut self, event: Event) -> SC2Result<()> {
-        let army_types = [UnitTypeId::Zergling, UnitTypeId::Roach];
+        let army_types = [UnitTypeId::Zergling, UnitTypeId::Roach, UnitTypeId::Hydralisk];
         match event {
             Event::UnitCreated(tag) => {
                 if let Some(unit) = self.units.my.units.get(tag) {

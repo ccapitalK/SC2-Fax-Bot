@@ -52,8 +52,24 @@ impl FaxBot {
         }
     }
 
+    pub fn research_upgrade(&mut self, researcher: UnitTypeId, upgrade: UpgradeId, ability: AbilityId) {
+        if self.count_unit(researcher) > 0 {
+            if !self.has_upgrade(upgrade) && !self.is_ordered_upgrade(upgrade) && self.can_afford_upgrade(upgrade) {
+                let researchers = self.units.my.all
+                    .filter(|unit| unit.is_ready() && unit.orders().len() < 5);
+                if let Some(candidate) = researchers.min(|unit| unit.orders().len()) {
+                    candidate.use_ability(ability, true);
+                }
+            }
+        }
+    }
+
     pub fn perform_building(&mut self, _iteration: usize) -> SC2Result<()> {
-        if self.state.desired_gasses == 2 && self.minerals >= 400 && self.vespene < 100 {
+        // FIXME: This is ugly
+        if self.state.desired_bases > 2 {
+            self.state.desired_gasses = 6;
+            self.state.desired_workers = 56;
+        } else if self.state.desired_gasses == 2 && self.minerals >= 400 && self.vespene < 100 {
             self.state.desired_gasses = 4;
             self.state.desired_workers = 44;
         }
@@ -61,13 +77,22 @@ impl FaxBot {
         let num_hatcheries = self.count_unit(UnitTypeId::Hatchery);
         if self.supply_used >= 17 && self.count_unit(UnitTypeId::SpawningPool) < 1 {
             self.create_building(UnitTypeId::SpawningPool, main_base);
-        } else if self.supply_used >= 17 && num_hatcheries < 2 {
+        } else if self.supply_used >= 17 && num_hatcheries < self.state.desired_bases {
             let expansion = self.determine_best_expansion().unwrap();
             self.take_expansion(expansion)?;
         } else if self.supply_used >= 17 && self.count_unit(UnitTypeId::Extractor) < self.state.desired_gasses {
             self.ensure_taken_gasses(self.state.desired_gasses);
         } else if self.supply_used >= 32 && self.count_unit(UnitTypeId::RoachWarren) < 1 {
             self.create_building(UnitTypeId::RoachWarren, main_base);
+        } else if self.units.my.townhalls.len() > 2 && self.count_unit(UnitTypeId::Lair) < 1 {
+            if let Some(hatch) = self.units.my.townhalls.filter(|hatch| hatch.is_ready() && hatch.orders().len() == 0).first() {
+                hatch.use_ability(AbilityId::UpgradeToLairLair, false);
+            }
+        } else if self.count_unit(UnitTypeId::Lair) > 0 && self.count_unit(UnitTypeId::HydraliskDen) < 0 {
+            self.create_building(UnitTypeId::HydraliskDen, main_base);
+        } else if self.count_unit(UnitTypeId::HydraliskDen) > 0 {
+            self.research_upgrade(UnitTypeId::HydraliskDen, UpgradeId::EvolveGroovedSpines, AbilityId::ResearchGroovedSpines);
+            self.research_upgrade(UnitTypeId::HydraliskDen, UpgradeId::EvolveMuscularAugments, AbilityId::ResearchMuscularAugments);
         }
         Ok(())
     }
@@ -96,7 +121,7 @@ impl FaxBot {
                 l.train(UnitTypeId::Zergling, false);
             }
         }
-        if self.count_unit(UnitTypeId::SpawningPool) > 0 && self.count_unit(UnitTypeId::Queen) < HATCH_CAP {
+        if self.count_unit(UnitTypeId::SpawningPool) > 0 && self.count_unit(UnitTypeId::Queen) < self.state.desired_bases {
             if let Some(hatch) = self.least_busy_hatch() {
                 hatch.train(UnitTypeId::Queen, true);
             }
