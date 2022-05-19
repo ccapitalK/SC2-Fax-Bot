@@ -2,11 +2,12 @@ use rust_sc2::prelude::*;
 
 use crate::bot::FaxBot;
 
-const HATCH_CAP: usize = 2;
-
 impl FaxBot {
     fn ensure_taken_gasses(&mut self, num_gasses: usize) {
-        let current_gasses = self.count_unit(UnitTypeId::Extractor);
+        let current_gasses =
+            self.units.my.structures
+                .filter(|u| u.type_id() == UnitTypeId::Extractor && u.vespene_contents().map(|v| v > 0).unwrap_or(false)).len()
+                + self.counter().ordered().count(UnitTypeId::Extractor);
         for base in self.state.bases.iter() {
             if self.can_afford(UnitTypeId::Extractor, false) && current_gasses < num_gasses {
                 if let Some(nearest_free_gas) = self.find_gas_placement(*base) {
@@ -30,8 +31,9 @@ impl FaxBot {
     }
 
     fn determine_best_expansion(&self) -> Option<Point2> {
+        let should_use_low_gas_bases = self.state.desired_bases > 2;
         let expansions = self.expansions.iter()
-            .filter(|e| e.base.is_none() && e.geysers.len() >= 2)
+            .filter(|e| e.base.is_none() && (should_use_low_gas_bases || e.geysers.len() >= 2))
             .map(|e| e.loc);
         expansions.closest(self.start_location)
     }
@@ -64,7 +66,8 @@ impl FaxBot {
         }
     }
 
-    pub fn perform_building(&mut self, _iteration: usize) -> SC2Result<()> {
+    pub fn perform_building(&mut self, _iteration: usize) -> SC2Result<bool> {
+        let mut did_attempt_build = true;
         // FIXME: This is ugly
         if self.state.desired_bases > 2 {
             self.state.desired_gasses = 6;
@@ -87,14 +90,18 @@ impl FaxBot {
         } else if self.units.my.townhalls.len() > 2 && self.count_unit(UnitTypeId::Lair) < 1 {
             if let Some(hatch) = self.units.my.townhalls.filter(|hatch| hatch.is_ready() && hatch.orders().len() == 0).first() {
                 hatch.use_ability(AbilityId::UpgradeToLairLair, false);
+            } else {
+                did_attempt_build = false;
             }
-        } else if self.count_unit(UnitTypeId::Lair) > 0 && self.count_unit(UnitTypeId::HydraliskDen) < 0 {
+        } else if self.count_unit(UnitTypeId::Lair) > 0 && self.count_unit(UnitTypeId::HydraliskDen) < 1 {
             self.create_building(UnitTypeId::HydraliskDen, main_base);
-        } else if self.count_unit(UnitTypeId::HydraliskDen) > 0 {
-            self.research_upgrade(UnitTypeId::HydraliskDen, UpgradeId::EvolveGroovedSpines, AbilityId::ResearchGroovedSpines);
-            self.research_upgrade(UnitTypeId::HydraliskDen, UpgradeId::EvolveMuscularAugments, AbilityId::ResearchMuscularAugments);
+        } else {
+            did_attempt_build = false;
         }
-        Ok(())
+        self.research_upgrade(UnitTypeId::RoachWarren, UpgradeId::GlialReconstitution, AbilityId::ResearchGlialRegeneration);
+        self.research_upgrade(UnitTypeId::HydraliskDen, UpgradeId::EvolveGroovedSpines, AbilityId::ResearchGroovedSpines);
+        self.research_upgrade(UnitTypeId::HydraliskDen, UpgradeId::EvolveMuscularAugments, AbilityId::ResearchMuscularAugments);
+        Ok(did_attempt_build)
     }
 
     fn create_building(&mut self, unit_type: UnitTypeId, location: Point2) {
@@ -115,6 +122,9 @@ impl FaxBot {
                 }
             } else if (!self.state.is_under_attack) && num_workers < self.state.desired_workers && self.can_afford(UnitTypeId::Drone, true) {
                 l.train(UnitTypeId::Drone, false);
+            } else if self.count_unit(UnitTypeId::HydraliskDen) > 0
+                && self.count_unit(UnitTypeId::Roach) > self.count_unit(UnitTypeId::Hydralisk) {
+                l.train(UnitTypeId::Hydralisk, false);
             } else if self.count_unit(UnitTypeId::RoachWarren) > 0 && self.can_afford(UnitTypeId::Roach, true) {
                 l.train(UnitTypeId::Roach, false);
             } else if self.state.is_under_attack && self.can_afford(UnitTypeId::Zergling, true) {

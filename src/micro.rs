@@ -26,19 +26,20 @@ impl FaxBot {
         self.state.map_info.get_random_point()
     }
     pub fn perform_micro(&mut self, _iteration: usize) -> SC2Result<()> {
-        let num_roaches = self.counter().count(UnitTypeId::Roach);
-        if self.state.is_under_attack || num_roaches > self.state.peak_roaches || self.supply_used >= 150 {
-            let num_roaches = self.units.my.units.of_type(UnitTypeId::Roach).len();
-            let army = &mut self.units.my.units.of_type(UnitTypeId::Roach).idle();
+        let mut army_types = vec![UnitTypeId::Roach, UnitTypeId::Hydralisk];
+        let army_count = self.counter().count(UnitTypeId::Roach) + self.counter().count(UnitTypeId::Hydralisk);
+        if self.state.is_under_attack || army_count > self.state.peak_army || self.supply_used >= 150 {
             if self.state.is_under_attack {
-                army.extend(self.units.my.units.of_type(UnitTypeId::Zergling).idle());
+                army_types.push(UnitTypeId::Zergling);
             }
+            let active_army_count = self.units.my.units.filter(|u| army_types.contains(&u.type_id())).len();
+            let army = &mut self.units.my.units.filter(|u| army_types.contains(&u.type_id())).idle();
             let target = self.determine_most_important_target();
             if army.len() > 0 {
-                println!("A-moving {}/{} roaches to {:?}", army.len(), num_roaches, target);
+                println!("A-moving {}/{} units to {:?}", army.len(), active_army_count, target);
                 self.a_move(army, target, false);
             }
-            self.state.peak_roaches = num_roaches;
+            self.state.peak_army = army_count;
         }
         {
             self.position_queens();

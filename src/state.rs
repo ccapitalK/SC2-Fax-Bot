@@ -4,7 +4,7 @@ use rust_sc2::prelude::*;
 pub struct BotState {
     pub bases: Vec<Point2>,
     pub expansion_order: Vec<rust_sc2::bot::Expansion>,
-    pub peak_roaches: usize,
+    pub peak_army: usize,
     pub desired_workers: usize,
     pub desired_gasses: usize,
     pub desired_bases: usize,

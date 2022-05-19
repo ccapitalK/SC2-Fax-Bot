@@ -60,8 +60,9 @@ impl Player for FaxBot {
     }
     fn on_step(&mut self, iteration: usize) -> SC2Result<()> {
         self.determine_state_for_tick(iteration);
-        self.perform_building(iteration)?;
-        self.perform_training(iteration)?;
+        if !self.perform_building(iteration)? {
+            self.perform_training(iteration)?;
+        }
         self.perform_micro(iteration)
     }
     fn on_end(&self, _result: GameResult) -> SC2Result<()> {
