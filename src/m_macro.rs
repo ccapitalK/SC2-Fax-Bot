@@ -39,6 +39,7 @@ impl FaxBot {
     }
 
     fn take_expansion(&mut self, position: Point2) -> SC2Result<()> {
+        // FIXME: This may queue multiple hatcheries in the same expansion (:
         if self.can_afford(UnitTypeId::Hatchery, false) {
             println!("Expanding");
             self.create_building(UnitTypeId::Hatchery, position);
