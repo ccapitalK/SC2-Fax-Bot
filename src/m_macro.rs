@@ -35,21 +35,23 @@ impl FaxBot {
         (self.supply_cap as usize) + (supply_per_provider.floor() as usize) * self.counter().ordered().count(supply_unit)
     }
 
-    fn determine_best_expansion(&self) -> Option<Point2> {
+    fn determine_best_expansion_order(&self) -> Vec<Point2> {
         let should_use_low_gas_bases = self.state.desired_bases > 2;
-        let expansions = self.expansions.iter()
+        let mut expansions: Vec<_> = self.expansions.iter()
             .filter(|e| e.base.is_none() && (should_use_low_gas_bases || e.geysers.len() >= 2))
-            .map(|e| e.loc);
-        expansions.closest(self.start_location)
+            .map(|e| e.loc).collect();
+        expansions.sort_by_key(|e| float_ord::FloatOrd(e.distance(self.start_location)));
+        expansions
     }
 
-    fn take_expansion(&mut self, position: Point2) -> SC2Result<()> {
+    fn take_expansion(&mut self, position: Point2) -> bool {
         // FIXME: This may queue multiple hatcheries in the same expansion (:
         if self.can_afford(UnitTypeId::Hatchery, false) {
             println!("Expanding");
-            self.create_building(UnitTypeId::Hatchery, position);
+            self.create_building(UnitTypeId::Hatchery, position, true)
+        } else {
+            false
         }
-        Ok(())
     }
 
     pub fn get_rally_point(&self) -> Point2 {
@@ -89,27 +91,30 @@ impl FaxBot {
         }
         let main_base = self.start_location.towards(self.game_info.map_center, 5.0);
         if self.supply_used >= 17 && self.count_unit(UnitTypeId::SpawningPool) < 1 {
-            println!("{}: Want Spawning pool", _iteration);
-            self.create_building(UnitTypeId::SpawningPool, main_base);
+            // println!("{}: Want Spawning pool", _iteration);
+            self.create_building(UnitTypeId::SpawningPool, main_base, false);
         } else if self.should_expand() {
-            println!("{}: Want Expand", _iteration);
-            let expansion = self.determine_best_expansion().unwrap();
-            self.take_expansion(expansion)?;
+            // println!("{}: Want Expand", _iteration);
+            for expansion in self.determine_best_expansion_order() {
+                if self.take_expansion(expansion) {
+                    break;
+                }
+            }
         } else if self.supply_used >= 17 && self.ensure_taken_gasses(self.state.desired_gasses) {
-            println!("{}: Want Extractor", _iteration);
+            // println!("{}: Want Extractor", _iteration);
         } else if self.supply_used >= 32 && self.count_unit(UnitTypeId::RoachWarren) < 1 {
-            println!("{}: Want Roach Warren", _iteration);
-            self.create_building(UnitTypeId::RoachWarren, main_base);
+            // println!("{}: Want Roach Warren", _iteration);
+            self.create_building(UnitTypeId::RoachWarren, main_base, false);
         } else if self.units.my.townhalls.len() > 2 && self.count_unit(UnitTypeId::Lair) < 1 {
-            println!("{}: Want Lair", _iteration);
+            // println!("{}: Want Lair", _iteration);
             if let Some(hatch) = self.units.my.townhalls.filter(|hatch| hatch.is_ready() && hatch.orders().len() == 0).first() {
                 hatch.use_ability(AbilityId::UpgradeToLairLair, false);
             } else {
                 did_attempt_build = false;
             }
         } else if self.counter().count(UnitTypeId::Lair) > 0 && self.count_unit(UnitTypeId::HydraliskDen) < 1 {
-            println!("{}: Want Hydra Den", _iteration);
-            self.create_building(UnitTypeId::HydraliskDen, main_base);
+            // println!("{}: Want Hydra Den", _iteration);
+            self.create_building(UnitTypeId::HydraliskDen, main_base, false);
         } else {
             did_attempt_build = false;
         }
@@ -119,12 +124,18 @@ impl FaxBot {
         Ok(did_attempt_build)
     }
 
-    fn create_building(&mut self, unit_type: UnitTypeId, location: Point2) {
+    fn create_building(&mut self, unit_type: UnitTypeId, location: Point2, exact: bool) -> bool {
+        let mut options = PlacementOptions::default();
+        if exact {
+            options.max_distance = 0;
+        }
         if let Some(w) = self.units.my.workers.first() {
-            if let Some(location) = self.find_placement(unit_type, location, Default::default()) {
+            if let Some(location) = self.find_placement(unit_type, location, options) {
                 w.build(unit_type, location, false);
+                return true;
             }
         }
+        false
     }
 
     pub fn perform_training(&mut self, _iteration: usize) -> SC2Result<()> {
