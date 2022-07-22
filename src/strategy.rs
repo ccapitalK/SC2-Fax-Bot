@@ -24,7 +24,13 @@ impl FaxBot {
                 }
                 // println!("{} {}", unaccounted_mineral_workers, base.minerals.len());
                 if base.minerals.len() > 0 {
-                    unaccounted_mineral_workers -= 2 * base.minerals.len() as isize;
+                    // We don't have information about minerals in fog of war, so we can't query
+                    // them in self.units.mineral_fields yet. We assume they are unmined.
+                    let num_mineral_slots = base.minerals.len() as isize;
+                    let num_nearly_empty = self.units.mineral_fields.find_tags(&base.minerals)
+                        .filter(|u| u.mineral_contents().unwrap() <= 200)
+                        .iter().count() as isize;
+                    unaccounted_mineral_workers -= 2 * (num_mineral_slots - num_nearly_empty);
                     desired_bases += 1;
                 }
                 if unaccounted_mineral_workers <= 0 {
