@@ -5,13 +5,21 @@ use float_ord::FloatOrd;
 
 impl FaxBot {
     pub fn determine_state_for_tick(&mut self, _iteration: usize) {
-        let structures = &self.units.my.structures;
-        let attacking_units = self.units.enemy.units.filter(|u| {
-            !u.is_worker()
-                && !u.is_flying()
-                && structures.closest_distance(u.position()).unwrap_or(9999.0) < 18.0
+        self.state
+            .update_my_recent_structure_positions(&self.units.my.structures.clone(), _iteration);
+        self.state
+            .update_recent_enemy_spotted_information(&self.units.enemy.all.clone(), _iteration);
+        let structures = self.state.get_my_recent_structure_positions(_iteration);
+        let attacking_units = self.state.get_recent_enemy_spotted_information(_iteration);
+        let attacking_units = attacking_units.iter().filter(|&&(pos, t)| {
+            !t.is_worker()
+                // FIXME: Ugly
+                && t != UnitTypeId::Overlord
+                && t != UnitTypeId::OverlordTransport
+                && t != UnitTypeId::Overseer
+                && structures.iter().closest_distance(pos).unwrap_or(9999.0) < 18.0
         });
-        let is_under_attack = attacking_units.len() >= 2;
+        let is_under_attack = attacking_units.count() >= 2;
         if is_under_attack != self.state.is_under_attack {
             println!("Under attack? {}", is_under_attack);
         }

@@ -181,7 +181,13 @@ impl FaxBot {
         if exact {
             options.max_distance = 0;
         }
-        if let Some(w) = self.units.my.workers.first() {
+        if let Some(w) = self
+            .units
+            .my
+            .workers
+            .filter(|u| !u.orders().iter().any(|o| o.ability.is_constructing()))
+            .first()
+        {
             if let Some(location) = self.find_placement(unit_type, location, options) {
                 w.build(unit_type, location, false);
                 return true;

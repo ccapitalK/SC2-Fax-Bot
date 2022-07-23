@@ -67,7 +67,7 @@ impl MapInfo {
             width,
             height,
             partitions,
-            zero_offset: Point2::new(boundaries.x0 as f32, boundaries.x1 as f32),
+            zero_offset: Point2::new(boundaries.x0 as f32, boundaries.y0 as f32),
         };
         map_info
     }
