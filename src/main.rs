@@ -2,14 +2,14 @@
 extern crate clap;
 
 mod bot;
-mod state;
-mod micro;
 mod m_macro;
-mod strategy;
 mod map;
+mod micro;
+mod state;
+mod strategy;
 
-use rust_sc2::prelude::*;
 use rand::prelude::*;
+use rust_sc2::prelude::*;
 
 fn main() -> SC2Result<()> {
     let app = parse_args();
@@ -31,7 +31,7 @@ fn main() -> SC2Result<()> {
         "CatalystLE",
         "CeruleanFallLE",
         "CyberForestLE",
-        "DefendersLandingLE"
+        "DefendersLandingLE",
     ];
     let mut rng = thread_rng();
 
@@ -79,8 +79,10 @@ fn main() -> SC2Result<()> {
         _ => run_ladder_game(
             &mut bot,
             app.value_of("ladder_server").unwrap_or("127.0.0.1"),
-            app.value_of("host_port").expect("GamePort must be specified")
-                .parse().unwrap(),
+            app.value_of("host_port")
+                .expect("GamePort must be specified")
+                .parse()
+                .unwrap(),
             app.value_of("player_port")
                 .expect("StartPort must be specified")
                 .parse()
@@ -92,65 +94,66 @@ fn main() -> SC2Result<()> {
 
 fn parse_args() -> clap::ArgMatches<'static> {
     clap_app!(FaxBot =>
-		(version: crate_version!())
-		(author: crate_authors!())
-		(@arg ladder_server: --LadderServer +takes_value)
-		(@arg opponent_id: --OpponentId +takes_value)
-		(@arg host_port: --GamePort +takes_value)
-		(@arg player_port: --StartPort +takes_value)
-		(@arg game_step: -s --step
-			+takes_value
-			default_value("2")
-			"Sets game step for bot"
-		)
-		(@subcommand local =>
-			(about: "Runs local game vs Computer")
-			(@arg map: -m --map
-				+takes_value
-			)
-			(@arg race: -r --race
-				+takes_value
-				"Sets opponent race"
-			)
-			(@arg difficulty: -d --difficulty
-				+takes_value
-				"Sets opponent diffuculty"
-			)
-			(@arg ai_build: --("ai-build")
-				+takes_value
-				"Sets opponent build"
-			)
-			(@arg sc2_version: --("sc2-version")
-				+takes_value
-				"Sets sc2 version"
-			)
-			(@arg save_replay: --("save-replay")
-				+takes_value
-				"Sets path to save replay"
-			)
-			(@arg realtime: --realtime "Enables realtime mode")
-		)
-		(@subcommand human =>
-			(about: "Runs game Human vs Bot")
-			(@arg map: -m --map
-				+takes_value
-			)
-			(@arg race: -r --race *
-				+takes_value
-				"Sets human race"
-			)
-			(@arg name: --name
-				+takes_value
-				"Sets human name"
-			)
-			(@arg sc2_version: --("sc2-version")
-				+takes_value
-				"Sets sc2 version"
-			)
-			(@arg save_replay: --("save-replay")
-				+takes_value
-				"Sets path to save replay"
-			)
-		)
-	).get_matches()
+        (version: crate_version!())
+        (author: crate_authors!())
+        (@arg ladder_server: --LadderServer +takes_value)
+        (@arg opponent_id: --OpponentId +takes_value)
+        (@arg host_port: --GamePort +takes_value)
+        (@arg player_port: --StartPort +takes_value)
+        (@arg game_step: -s --step
+            +takes_value
+            default_value("2")
+            "Sets game step for bot"
+        )
+        (@subcommand local =>
+            (about: "Runs local game vs Computer")
+            (@arg map: -m --map
+                +takes_value
+            )
+            (@arg race: -r --race
+                +takes_value
+                "Sets opponent race"
+            )
+            (@arg difficulty: -d --difficulty
+                +takes_value
+                "Sets opponent diffuculty"
+            )
+            (@arg ai_build: --("ai-build")
+                +takes_value
+                "Sets opponent build"
+            )
+            (@arg sc2_version: --("sc2-version")
+                +takes_value
+                "Sets sc2 version"
+            )
+            (@arg save_replay: --("save-replay")
+                +takes_value
+                "Sets path to save replay"
+            )
+            (@arg realtime: --realtime "Enables realtime mode")
+        )
+        (@subcommand human =>
+            (about: "Runs game Human vs Bot")
+            (@arg map: -m --map
+                +takes_value
+            )
+            (@arg race: -r --race *
+                +takes_value
+                "Sets human race"
+            )
+            (@arg name: --name
+                +takes_value
+                "Sets human name"
+            )
+            (@arg sc2_version: --("sc2-version")
+                +takes_value
+                "Sets sc2 version"
+            )
+            (@arg save_replay: --("save-replay")
+                +takes_value
+                "Sets path to save replay"
+            )
+        )
+    )
+    .get_matches()
 }

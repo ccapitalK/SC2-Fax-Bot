@@ -1,8 +1,8 @@
 use ndarray::Array2;
 
-use rust_sc2::prelude::*;
-use rust_sc2::pixel_map::{Pixel, PixelMap};
 use rust_sc2::geometry::Rect;
+use rust_sc2::pixel_map::{Pixel, PixelMap};
+use rust_sc2::prelude::*;
 
 fn trim_array<T: Clone + Default>(data: &Array2<T>, bounds: Rect) -> Array2<T> {
     let width = data.len_of(ndarray::Axis(0));
@@ -38,11 +38,7 @@ impl std::fmt::Debug for MapInfo {
 pub fn dump_pixel_map(map: &PixelMap) {
     for y in (0..(map.len_of(ndarray::Axis(1)))).rev() {
         for x in 0..(map.len_of(ndarray::Axis(0))) {
-            print!("{}", if map[(x, y)] == Pixel::Set {
-                "1"
-            } else {
-                "0"
-            });
+            print!("{}", if map[(x, y)] == Pixel::Set { "1" } else { "0" });
         }
         println!();
     }
@@ -92,18 +88,18 @@ impl MapInfo {
             point: Point2 {
                 x: rand::random::<f32>() * self.width as f32,
                 y: rand::random::<f32>() * self.height as f32,
-            }
+            },
         })
     }
 }
 
 #[cfg(test)]
 mod test {
+    use crate::map::partition;
+    use ndarray::Array2;
+    use rust_sc2::pixel_map::{Pixel, PixelMap};
     use std::fs::File;
     use std::io::{BufReader, Read, Result};
-    use rust_sc2::pixel_map::{PixelMap, Pixel};
-    use ndarray::Array2;
-    use crate::map::partition;
 
     fn read_map_from_bytes(data: &[u8]) -> PixelMap {
         let mut height = 0;
@@ -117,7 +113,11 @@ mod test {
         }
         let shape = (width.unwrap(), height);
         let mut partition = Array2::default(shape);
-        for (y, line) in data.split(|c| *c == b'\n').filter(|l| l.len() > 0).enumerate() {
+        for (y, line) in data
+            .split(|c| *c == b'\n')
+            .filter(|l| l.len() > 0)
+            .enumerate()
+        {
             for x in 0..width.unwrap() {
                 partition[(x, y)] = if line[x] == b'0' {
                     Pixel::Empty

@@ -24,7 +24,7 @@ impl FaxBot {
         //        to work, but apparently the SC2 API doesn't provide ability energy costs anywhere :(
         match ability {
             AbilityId::EffectInjectLarva => Some(25),
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
     pub fn count_unit(&self, building_id: UnitTypeId) -> usize {
@@ -38,11 +38,16 @@ impl Player for FaxBot {
     }
     fn on_start(&mut self) -> SC2Result<()> {
         let start_location = self.start_location;
-        let enemy_starts = self.game_info.start_locations.iter()
-            .map(|p| *p)
+        let enemy_starts = self
+            .game_info
+            .start_locations
+            .iter()
+            .copied()
             .filter(|p| *p != start_location)
             .collect::<Vec<_>>();
-        let mut points = self.expansions.iter()
+        let mut points = self
+            .expansions
+            .iter()
             .map(|e| e.loc)
             .filter(|p| *p != start_location)
             .collect::<Vec<_>>();
@@ -51,10 +56,8 @@ impl Player for FaxBot {
         self.state.desired_gasses = 2;
         self.state.desired_bases = 2;
         self.state.micro.enemy_base_locations_by_expansion_order = points;
-        self.state.map_info = crate::map::MapInfo::new(
-            &self.game_info.pathing_grid,
-            self.game_info.playable_area,
-        );
+        self.state.map_info =
+            crate::map::MapInfo::new(&self.game_info.pathing_grid, self.game_info.playable_area);
         println!("Started bot");
         Ok(())
     }
@@ -70,17 +73,18 @@ impl Player for FaxBot {
         Ok(())
     }
     fn on_event(&mut self, event: Event) -> SC2Result<()> {
-        let army_types = [UnitTypeId::Zergling, UnitTypeId::Roach, UnitTypeId::Hydralisk];
-        match event {
-            Event::UnitCreated(tag) => {
-                if let Some(unit) = self.units.my.units.get(tag) {
-                    if army_types.contains(&unit.type_id()) {
-                        let rally = self.get_rally_point();
-                        unit.attack(Target::Pos(rally), false);
-                    }
+        let army_types = [
+            UnitTypeId::Zergling,
+            UnitTypeId::Roach,
+            UnitTypeId::Hydralisk,
+        ];
+        if let Event::UnitCreated(tag) = event {
+            if let Some(unit) = self.units.my.units.get(tag) {
+                if army_types.contains(&unit.type_id()) {
+                    let rally = self.get_rally_point();
+                    unit.attack(Target::Pos(rally), false);
                 }
             }
-            _ => {}
         };
         Ok(())
     }
