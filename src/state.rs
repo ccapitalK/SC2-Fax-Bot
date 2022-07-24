@@ -57,13 +57,8 @@ impl BotState {
     pub fn update_my_recent_structure_positions(&mut self, structures: &Units, iteration: usize) {
         self.my_structures.update_all(iteration, structures, |_| ());
     }
-    pub fn update_recent_enemy_spotted_information(
-        &mut self,
-        structures: &Units,
-        iteration: usize,
-    ) {
-        self.enemy_units
-            .update_all(iteration, structures, |u| u.type_id());
+    pub fn update_recent_enemy_spotted_information(&mut self, units: &Units, iteration: usize) {
+        self.enemy_units.update_all(iteration, units, |u| u.type_id());
     }
     pub fn get_my_recent_structure_positions(&self, iteration: usize) -> Vec<Point2> {
         let recent_tick_threshold = 22 * 40;
@@ -84,8 +79,7 @@ impl BotState {
             .map
             .iter()
             .filter_map(|(_, &(o, t))| {
-                (o.timestamp + recent_tick_threshold >= iteration)
-                    .then_some((o.position, t))
+                (o.timestamp + recent_tick_threshold >= iteration).then_some((o.position, t))
             })
             .collect()
     }

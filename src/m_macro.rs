@@ -122,7 +122,9 @@ impl FaxBot {
             self.state.desired_workers = 44;
         }
         let main_base = self.start_location.towards(self.game_info.map_center, 5.0);
-        if self.supply_used >= 17 && self.count_unit(UnitTypeId::SpawningPool) < 1 {
+        if (self.supply_used >= 17 || self.state.is_under_attack)
+            && self.count_unit(UnitTypeId::SpawningPool) < 1
+        {
             // println!("{}: Want Spawning pool", _iteration);
             self.create_building(UnitTypeId::SpawningPool, main_base, false);
         } else if self.should_expand() {

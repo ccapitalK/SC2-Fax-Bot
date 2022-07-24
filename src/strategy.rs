@@ -9,11 +9,11 @@ impl FaxBot {
         let attacking_units = self.state.get_recent_enemy_spotted_information(iteration);
         let attacking_units = attacking_units.iter().filter(|&&(pos, t)| {
             !t.is_worker()
-                    // FIXME: Ugly
-                    && t != UnitTypeId::Overlord
-                    && t != UnitTypeId::OverlordTransport
-                    && t != UnitTypeId::Overseer
-                    && structures.iter().closest_distance(pos).unwrap_or(9999.0) < 18.0
+                // FIXME: Ugly
+                && t != UnitTypeId::Overlord
+                && t != UnitTypeId::OverlordTransport
+                && t != UnitTypeId::Overseer
+                && structures.iter().closest_distance(pos).unwrap_or(9999.0) < 18.0
         });
         attacking_units.count()
     }
@@ -24,7 +24,9 @@ impl FaxBot {
             .start_locations
             .iter()
             .filter(|&&p| p != spawn);
-        let threatening_units = self.state.get_recent_enemy_spotted_information(iteration);
+        let threatening_units = self
+            .state
+            .get_recent_enemy_spotted_information(iteration.saturating_sub(22 * 20));
         let threatening_units = threatening_units.iter().filter(|&&(pos, _t)| {
             spawn.distance(pos) <= enemy_spawns.clone().closest_distance(pos).unwrap() + 9.0
         });

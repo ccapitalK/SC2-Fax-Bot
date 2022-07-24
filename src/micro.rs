@@ -93,7 +93,7 @@ impl FaxBot {
             let ready_queens = self.units.my.units.idle().filter(|q| {
                 q.type_id() == UnitTypeId::Queen
                     && q.energy().unwrap() as usize
-                        >= self.energy_cost(AbilityId::EffectInjectLarva).unwrap()
+                    >= self.energy_cost(AbilityId::EffectInjectLarva).unwrap()
             });
             for hatch in idle_hatcheries.iter() {
                 if let Some(queen) = ready_queens.filter(|q| q.distance(hatch) <= 8.0).first() {
@@ -125,7 +125,7 @@ impl FaxBot {
         }
         for hatch in unqueened_hatches.iter() {
             if let Some(queen) = queens.pop() {
-                queen.move_to(Target::Pos(hatch.position()), false);
+                queen.attack(Target::Pos(hatch.position()), false);
             }
         }
     }
