@@ -4,22 +4,39 @@ use crate::bot::FaxBot;
 use float_ord::FloatOrd;
 
 impl FaxBot {
+    fn num_attacking_enemies(&self, iteration: usize) -> usize {
+        let structures = self.state.get_my_recent_structure_positions(iteration);
+        let attacking_units = self.state.get_recent_enemy_spotted_information(iteration);
+        let attacking_units = attacking_units.iter().filter(|&&(pos, t)| {
+            !t.is_worker()
+                    // FIXME: Ugly
+                    && t != UnitTypeId::Overlord
+                    && t != UnitTypeId::OverlordTransport
+                    && t != UnitTypeId::Overseer
+                    && structures.iter().closest_distance(pos).unwrap_or(9999.0) < 18.0
+        });
+        attacking_units.count()
+    }
+    fn num_threatening_enemies(&self, iteration: usize) -> usize {
+        let spawn = self.start_location;
+        let enemy_spawns = self
+            .game_info
+            .start_locations
+            .iter()
+            .filter(|&&p| p != spawn);
+        let threatening_units = self.state.get_recent_enemy_spotted_information(iteration);
+        let threatening_units = threatening_units.iter().filter(|&&(pos, _t)| {
+            spawn.distance(pos) <= enemy_spawns.clone().closest_distance(pos).unwrap() + 9.0
+        });
+        threatening_units.count()
+    }
     pub fn determine_state_for_tick(&mut self, _iteration: usize) {
         self.state
             .update_my_recent_structure_positions(&self.units.my.structures.clone(), _iteration);
         self.state
             .update_recent_enemy_spotted_information(&self.units.enemy.all.clone(), _iteration);
-        let structures = self.state.get_my_recent_structure_positions(_iteration);
-        let attacking_units = self.state.get_recent_enemy_spotted_information(_iteration);
-        let attacking_units = attacking_units.iter().filter(|&&(pos, t)| {
-            !t.is_worker()
-                // FIXME: Ugly
-                && t != UnitTypeId::Overlord
-                && t != UnitTypeId::OverlordTransport
-                && t != UnitTypeId::Overseer
-                && structures.iter().closest_distance(pos).unwrap_or(9999.0) < 18.0
-        });
-        let is_under_attack = attacking_units.count() >= 2;
+        let is_under_attack = self.num_attacking_enemies(_iteration) >= 2
+            || self.num_threatening_enemies(_iteration) >= 4;
         if is_under_attack != self.state.is_under_attack {
             println!("Under attack? {}", is_under_attack);
         }

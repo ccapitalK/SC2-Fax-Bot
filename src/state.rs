@@ -23,15 +23,15 @@ impl<T: std::fmt::Debug> Default for ObjectPermanence<T> {
 
 impl<T: std::fmt::Debug> ObjectPermanence<T> {
     pub fn update_all<F>(&mut self, timestamp: usize, units: &Units, f: F)
-    where
-        F: Fn(&Unit) -> T,
+        where
+            F: Fn(&Unit) -> T,
     {
         for unit in units {
             let tag = unit.tag();
             let val = f(unit);
             let spotted = ObjectSpotted {
                 position: unit.position(),
-                timestamp: timestamp.clone(),
+                timestamp,
             };
             self.map.insert(tag, (spotted, val));
         }
@@ -71,7 +71,7 @@ impl BotState {
             .map
             .iter()
             .filter_map(|(_, (o, _))| {
-                (o.timestamp.clone() + recent_tick_threshold >= iteration).then_some(o.position)
+                (o.timestamp + recent_tick_threshold >= iteration).then_some(o.position)
             })
             .collect()
     }
@@ -84,10 +84,13 @@ impl BotState {
             .map
             .iter()
             .filter_map(|(_, &(o, t))| {
-                (o.timestamp.clone() + recent_tick_threshold >= iteration)
+                (o.timestamp + recent_tick_threshold >= iteration)
                     .then_some((o.position, t))
             })
             .collect()
+    }
+    pub fn register_unit_destroyed(&mut self, tag: u64) {
+        self.enemy_units.map.remove(&tag);
     }
 }
 

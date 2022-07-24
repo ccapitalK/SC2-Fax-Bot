@@ -29,8 +29,27 @@ impl FaxBot {
         }
         self.state.map_info.get_random_point()
     }
+    fn move_overlords(&mut self, _iteration: usize) -> SC2Result<()> {
+        if _iteration < 22 {
+            let midpoint = self.state.map_info.midpoint();
+            let overlords = self
+                .units
+                .my
+                .units
+                .filter(|u| u.type_id() == UnitTypeId::Overlord);
+            for unit in overlords {
+                unit.move_to(Target::Pos(midpoint), false);
+            }
+        }
+        Ok(())
+    }
     pub fn perform_micro(&mut self, _iteration: usize) -> SC2Result<()> {
-        let mut army_types = vec![UnitTypeId::Roach, UnitTypeId::Hydralisk];
+        self.move_overlords(_iteration)?;
+        let mut army_types = vec![
+            UnitTypeId::Zergling,
+            UnitTypeId::Roach,
+            UnitTypeId::Hydralisk,
+        ];
         let army_count =
             self.counter().count(UnitTypeId::Roach) + self.counter().count(UnitTypeId::Hydralisk);
         if self.state.is_under_attack

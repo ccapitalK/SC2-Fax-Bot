@@ -83,6 +83,15 @@ impl MapInfo {
     pub fn extract_point(&self, trimmed_point: TrimmedPoint) -> Point2 {
         trimmed_point.point + self.zero_offset
     }
+    pub fn midpoint(&self) -> Point2 {
+        self.extract_point(TrimmedPoint {
+            point: Point2 {
+                x: self.width as f32 / 2.0,
+                y: self.height as f32 / 2.0,
+            },
+        })
+    }
+
     pub fn get_random_point(&self) -> Point2 {
         self.extract_point(TrimmedPoint {
             point: Point2 {

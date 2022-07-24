@@ -78,13 +78,19 @@ impl Player for FaxBot {
             UnitTypeId::Roach,
             UnitTypeId::Hydralisk,
         ];
-        if let Event::UnitCreated(tag) = event {
-            if let Some(unit) = self.units.my.units.get(tag) {
-                if army_types.contains(&unit.type_id()) {
-                    let rally = self.get_rally_point();
-                    unit.attack(Target::Pos(rally), false);
+        match event {
+            Event::UnitCreated(tag) => {
+                if let Some(unit) = self.units.my.units.get(tag) {
+                    if army_types.contains(&unit.type_id()) {
+                        let rally = self.get_rally_point();
+                        unit.attack(Target::Pos(rally), false);
+                    }
                 }
             }
+            Event::UnitDestroyed(u, _) => {
+                self.state.register_unit_destroyed(u);
+            }
+            _ => (),
         };
         Ok(())
     }

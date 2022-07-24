@@ -198,6 +198,8 @@ impl FaxBot {
 
     pub fn perform_training(&mut self, _iteration: usize) -> SC2Result<()> {
         let num_hatcheries = self.count_unit(UnitTypeId::Hatchery);
+        let has_roachwarren = self.counter().count(UnitTypeId::RoachWarren) > 0;
+        let has_hydraden = self.counter().count(UnitTypeId::HydraliskDen) > 0;
         for l in self.units.my.larvas.idle() {
             let num_workers =
                 self.supply_workers as usize + self.counter().ordered().count(UnitTypeId::Drone);
@@ -212,15 +214,17 @@ impl FaxBot {
                 && self.can_afford(UnitTypeId::Drone, true)
             {
                 l.train(UnitTypeId::Drone, false);
-            } else if self.count_unit(UnitTypeId::HydraliskDen) > 0
+            } else if has_hydraden
                 && self.count_unit(UnitTypeId::Roach) > self.count_unit(UnitTypeId::Hydralisk)
             {
                 l.train(UnitTypeId::Hydralisk, false);
-            } else if self.count_unit(UnitTypeId::RoachWarren) > 0
-                && self.can_afford(UnitTypeId::Roach, true)
-            {
+            } else if has_roachwarren && self.can_afford(UnitTypeId::Roach, true) {
                 l.train(UnitTypeId::Roach, false);
-            } else if self.state.is_under_attack && self.can_afford(UnitTypeId::Zergling, true) {
+            } else if self.state.is_under_attack
+                && !has_hydraden
+                && !has_roachwarren
+                && self.can_afford(UnitTypeId::Zergling, true)
+            {
                 l.train(UnitTypeId::Zergling, false);
             }
         }
