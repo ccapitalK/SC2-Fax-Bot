@@ -3,10 +3,27 @@ use rust_sc2::prelude::*;
 use crate::state::{BotState, GetBotState};
 use float_ord::FloatOrd;
 
+#[derive(Default, Debug)]
+pub struct RuntimeOptions {
+    pub use_tryhard_mining: bool,
+}
+
 #[bot]
 #[derive(Default)]
 pub struct FaxBot {
+    pub runtime_options: RuntimeOptions,
     pub state: BotState,
+    // Store this here to make it easier to access
+    pub current_iteration: usize,
+}
+
+impl FaxBot {
+    pub fn new(runtime_options: RuntimeOptions) -> Self {
+        FaxBot {
+            runtime_options,
+            ..Default::default()
+        }
+    }
 }
 
 impl GetBotState for FaxBot {
@@ -62,6 +79,7 @@ impl Player for FaxBot {
         Ok(())
     }
     fn on_step(&mut self, iteration: usize) -> SC2Result<()> {
+        self.current_iteration = iteration;
         self.determine_state_for_tick(iteration);
         if !self.perform_building(iteration)? {
             self.perform_training(iteration)?;
@@ -80,11 +98,12 @@ impl Player for FaxBot {
         ];
         match event {
             Event::UnitCreated(tag) => {
-                if let Some(unit) = self.units.my.units.get(tag) {
+                if let Some(unit) = self._bot.units.my.units.get(tag) {
                     if army_types.contains(&unit.type_id()) {
                         let rally = self.get_rally_point();
                         unit.attack(Target::Pos(rally), false);
                     }
+                    self.state.register_unit_created(unit, self.current_iteration);
                 }
             }
             Event::UnitDestroyed(u, _) => {

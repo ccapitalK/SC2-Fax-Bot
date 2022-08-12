@@ -20,7 +20,10 @@ fn main() -> SC2Result<()> {
         None => unreachable!(),
     };
 
-    let mut bot = bot::FaxBot::default();
+    let mut runtime_options = bot::RuntimeOptions::default();
+    runtime_options.use_tryhard_mining = !app.is_present("no_tryhard_mining");
+    let runtime_options = runtime_options;
+    let mut bot = bot::FaxBot::new(runtime_options);
     bot.set_game_step(game_step);
 
     const LADDER_MAPS: &[&str] = &[
@@ -96,6 +99,7 @@ fn parse_args() -> clap::ArgMatches<'static> {
     clap_app!(FaxBot =>
         (version: crate_version!())
         (author: crate_authors!())
+        (@arg no_tryhard_mining: --NoTryhardMining)
         (@arg ladder_server: --LadderServer +takes_value)
         (@arg opponent_id: --OpponentId +takes_value)
         (@arg host_port: --GamePort +takes_value)
@@ -155,5 +159,5 @@ fn parse_args() -> clap::ArgMatches<'static> {
             )
         )
     )
-    .get_matches()
+        .get_matches()
 }

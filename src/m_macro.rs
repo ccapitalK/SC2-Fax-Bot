@@ -8,6 +8,8 @@ impl FaxBot {
         if self.count_unit(UnitTypeId::Extractor) >= self.state.desired_gasses {
             return false;
         }
+        let mut available_workers = self.units.my.workers.iter().collect::<Vec<_>>();
+        available_workers.sort_by_key(|u| u.is_idle());
         let current_gasses = self
             .units
             .my
@@ -18,11 +20,13 @@ impl FaxBot {
             })
             .len()
             + self.counter().ordered().count(UnitTypeId::Extractor);
-        for base in self.state.bases.iter() {
-            if self.can_afford(UnitTypeId::Extractor, false) && current_gasses < num_gasses {
-                if let Some(nearest_free_gas) = self.find_gas_placement(*base) {
-                    if let Some(w) = self.units.my.workers.first() {
+        if self.can_afford(UnitTypeId::Extractor, false) && current_gasses < num_gasses {
+            if let Some(w) = available_workers.pop() {
+                for base in self.state.bases.iter() {
+                    if let Some(nearest_free_gas) = self.find_gas_placement(*base) {
                         w.build_gas(nearest_free_gas.tag(), false);
+                        self.state.micro.drones.insert(w.tag(), crate::micro::DroneTask::Construct { queued_at: self.current_iteration });
+                        self.subtract_resources(UnitTypeId::Extractor, false);
                         return true;
                     }
                 }
@@ -125,22 +129,18 @@ impl FaxBot {
         if (self.supply_used >= 17 || self.state.is_under_attack)
             && self.count_unit(UnitTypeId::SpawningPool) < 1
         {
-            // println!("{}: Want Spawning pool", _iteration);
             self.create_building(UnitTypeId::SpawningPool, main_base, false);
         } else if self.should_expand() {
-            // println!("{}: Want Expand", _iteration);
             for expansion in self.determine_best_expansion_order() {
                 if self.take_expansion(expansion) {
                     break;
                 }
             }
         } else if self.supply_used >= 17 && self.ensure_taken_gasses(self.state.desired_gasses) {
-            // println!("{}: Want Extractor", _iteration);
+            // Nothing to do here, ensure_taken_gasses does everything as a side effect
         } else if self.supply_used >= 32 && self.count_unit(UnitTypeId::RoachWarren) < 1 {
-            // println!("{}: Want Roach Warren", _iteration);
             self.create_building(UnitTypeId::RoachWarren, main_base, false);
         } else if self.units.my.townhalls.len() > 2 && self.count_unit(UnitTypeId::Lair) < 1 {
-            // println!("{}: Want Lair", _iteration);
             if let Some(hatch) = self
                 .units
                 .my
@@ -183,6 +183,9 @@ impl FaxBot {
         if exact {
             options.max_distance = 0;
         }
+        if !self.can_afford(unit_type, false) {
+            return false;
+        }
         if let Some(w) = self
             .units
             .my
@@ -191,7 +194,9 @@ impl FaxBot {
             .first()
         {
             if let Some(location) = self.find_placement(unit_type, location, options) {
+                self.state.micro.drones.insert(w.tag(), crate::micro::DroneTask::Construct { queued_at: self.current_iteration });
                 w.build(unit_type, location, false);
+                self.subtract_resources(unit_type, false);
                 return true;
             }
         }

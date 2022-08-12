@@ -83,6 +83,11 @@ impl BotState {
             })
             .collect()
     }
+    pub fn register_unit_created(&mut self, unit: &Unit, iteration: usize) {
+        if unit.type_id() == UnitTypeId::Drone {
+            self.micro.drone_last_seen.insert(unit.tag(), iteration);
+        }
+    }
     pub fn register_unit_destroyed(&mut self, tag: u64) {
         self.enemy_units.map.remove(&tag);
     }
