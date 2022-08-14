@@ -109,27 +109,34 @@ impl FaxBot {
     }
 
     fn should_expand(&self) -> bool {
-        let num_hatcheries = self.count_unit(UnitTypeId::Hatchery);
+        let num_hatcheries = self.units.my.townhalls.len() + self.counter().ordered().count(UnitTypeId::Hatchery);
+        let desired_bases = if self.runtime_options.use_tryhard_mining && self.supply_used > 34 {
+            self.state.desired_bases.max(3)
+        } else {
+            self.state.desired_bases
+        };
+        println!("Expand counter: {} {}", num_hatcheries, desired_bases);
         self.supply_used >= 17
-            && num_hatcheries < self.state.desired_bases
+            && num_hatcheries < desired_bases
             && !self.state.is_under_attack
     }
 
     pub fn perform_building(&mut self, _iteration: usize) -> SC2Result<bool> {
         let mut did_attempt_build = true;
         // FIXME: This is ugly
+        println!("Desired bases: {}", self.state.desired_bases);
         if self.state.desired_bases > 2 {
-            self.state.desired_gasses = 6;
-            self.state.desired_workers = 56;
+            self.state.desired_gasses = 8;
+            self.state.desired_workers = 72;
         } else if self.state.desired_gasses == 2 && self.minerals >= 400 && self.vespene < 100 {
             self.state.desired_gasses = 4;
             self.state.desired_workers = 44;
         }
-        let main_base = self.start_location.towards(self.game_info.map_center, 5.0);
+        let main_build_location = self.start_location.towards(self.game_info.map_center, 7.0);
         if (self.supply_used >= 17 || self.state.is_under_attack)
             && self.count_unit(UnitTypeId::SpawningPool) < 1
         {
-            self.create_building(UnitTypeId::SpawningPool, main_base, false);
+            self.create_building(UnitTypeId::SpawningPool, main_build_location, false);
         } else if self.should_expand() {
             for expansion in self.determine_best_expansion_order() {
                 if self.take_expansion(expansion) {
@@ -139,8 +146,8 @@ impl FaxBot {
         } else if self.supply_used >= 17 && self.ensure_taken_gasses(self.state.desired_gasses) {
             // Nothing to do here, ensure_taken_gasses does everything as a side effect
         } else if self.supply_used >= 32 && self.count_unit(UnitTypeId::RoachWarren) < 1 {
-            self.create_building(UnitTypeId::RoachWarren, main_base, false);
-        } else if self.units.my.townhalls.len() > 2 && self.count_unit(UnitTypeId::Lair) < 1 {
+            self.create_building(UnitTypeId::RoachWarren, main_build_location, false);
+        } else if self.units.my.townhalls.len() > 2 && self.state.desired_bases > 2 && self.count_unit(UnitTypeId::Lair) < 1 {
             if let Some(hatch) = self
                 .units
                 .my
@@ -156,7 +163,7 @@ impl FaxBot {
             && self.count_unit(UnitTypeId::HydraliskDen) < 1
         {
             // println!("{}: Want Hydra Den", _iteration);
-            self.create_building(UnitTypeId::HydraliskDen, main_base, false);
+            self.create_building(UnitTypeId::HydraliskDen, main_build_location, false);
         } else {
             did_attempt_build = false;
         }
@@ -207,6 +214,8 @@ impl FaxBot {
         let num_hatcheries = self.count_unit(UnitTypeId::Hatchery);
         let has_roachwarren = self.counter().count(UnitTypeId::RoachWarren) > 0;
         let has_hydraden = self.counter().count(UnitTypeId::HydraliskDen) > 0;
+        let is_mineral_starved = self.minerals < 200 && self.vespene > 800;
+        let is_gas_starved = self.vespene < 100 && self.minerals > 600;
         for l in self.units.my.larvas.idle() {
             let num_workers =
                 self.supply_workers as usize + self.counter().ordered().count(UnitTypeId::Drone);
@@ -222,21 +231,19 @@ impl FaxBot {
             {
                 l.train(UnitTypeId::Drone, false);
             } else if has_hydraden
-                && self.count_unit(UnitTypeId::Roach) > self.count_unit(UnitTypeId::Hydralisk)
+                && (self.count_unit(UnitTypeId::Roach) > self.count_unit(UnitTypeId::Hydralisk) || is_mineral_starved)
             {
                 l.train(UnitTypeId::Hydralisk, false);
             } else if has_roachwarren && self.can_afford(UnitTypeId::Roach, true) {
                 l.train(UnitTypeId::Roach, false);
-            } else if self.state.is_under_attack
-                && !has_hydraden
-                && !has_roachwarren
+            } else if ((self.state.is_under_attack && !has_hydraden && !has_roachwarren) || is_gas_starved)
                 && self.can_afford(UnitTypeId::Zergling, true)
             {
                 l.train(UnitTypeId::Zergling, false);
             }
         }
         if self.count_unit(UnitTypeId::SpawningPool) > 0
-            && self.count_unit(UnitTypeId::Queen) < self.state.desired_bases
+            && self.count_unit(UnitTypeId::Queen) < self.units.my.townhalls.len()
         {
             if let Some(hatch) = self.least_busy_hatch() {
                 hatch.train(UnitTypeId::Queen, true);
