@@ -115,8 +115,7 @@ impl FaxBot {
         } else {
             self.state.desired_bases
         };
-        println!("Expand counter: {} {}", num_hatcheries, desired_bases);
-        self.supply_used >= 17
+        self.supply_used >= self.state.build_order.first_hatch_supply
             && num_hatcheries < desired_bases
             && !self.state.is_under_attack
     }
@@ -124,7 +123,6 @@ impl FaxBot {
     pub fn perform_building(&mut self, _iteration: usize) -> SC2Result<bool> {
         let mut did_attempt_build = true;
         // FIXME: This is ugly
-        println!("Desired bases: {}", self.state.desired_bases);
         if self.state.desired_bases > 2 {
             self.state.desired_gasses = 8;
             self.state.desired_workers = 72;
@@ -133,7 +131,7 @@ impl FaxBot {
             self.state.desired_workers = 44;
         }
         let main_build_location = self.start_location.towards(self.game_info.map_center, 7.0);
-        if (self.supply_used >= 17 || self.state.is_under_attack)
+        if (self.supply_used >= self.state.build_order.spawning_pool_supply || self.state.is_under_attack)
             && self.count_unit(UnitTypeId::SpawningPool) < 1
         {
             self.create_building(UnitTypeId::SpawningPool, main_build_location, false);

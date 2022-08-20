@@ -1,6 +1,7 @@
 use rust_sc2::prelude::*;
 
 use std::collections::HashMap;
+use crate::bot::RuntimeOptions;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ObjectSpotted {
@@ -39,8 +40,15 @@ impl<T: std::fmt::Debug> ObjectPermanence<T> {
 }
 
 #[derive(Debug, Default)]
+pub struct BuildOrderInfo {
+    pub spawning_pool_supply: u32,
+    pub first_hatch_supply: u32,
+}
+
+#[derive(Debug, Default)]
 pub struct BotState {
     pub bases: Vec<Point2>,
+    pub build_order: BuildOrderInfo,
     pub expansion_order: Vec<rust_sc2::bot::Expansion>,
     pub peak_army: usize,
     pub desired_workers: usize,
@@ -90,6 +98,16 @@ impl BotState {
     }
     pub fn register_unit_destroyed(&mut self, tag: u64) {
         self.enemy_units.map.remove(&tag);
+    }
+
+    pub fn determine_build_order(&mut self, runtime_options: &RuntimeOptions) {
+        if runtime_options.use_tryhard_mining {
+            self.build_order.spawning_pool_supply = 16;
+            self.build_order.first_hatch_supply = 16;
+        } else {
+            self.build_order.spawning_pool_supply = 17;
+            self.build_order.first_hatch_supply = 17;
+        }
     }
 }
 

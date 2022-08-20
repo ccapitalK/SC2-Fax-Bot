@@ -336,22 +336,45 @@ impl FaxBot {
                             let res_radius = resource.radius();
                             let path_dist = resource.position().distance(hatch.position());
                             let (hatch_near_pos, resource_near_pos) = Self::calc_line(hatch, resource);
-                            if drone.is_carrying_resource() {
-                                let distance = drone.position().distance(hatch.position());
-                                if distance >= path_dist / 2.0 {
-                                    drone.return_resource(false);
-                                } else if distance > hatch_radius + 1.0 {
-                                    drone.move_to(Target::Pos(hatch_near_pos), false);
+                            let first_order = drone.order();
+                            let check_current_order = |ability: AbilityId, target: Target| {
+                                if let Some((a, t, _)) = first_order {
+                                    a == ability && match (t, target) {
+                                        (Target::Tag(t1), Target::Tag(t2)) => t1 == t2,
+                                        (Target::Pos(t1), Target::Pos(t2)) => t1.distance(t2) <= 1.0,
+                                        (Target::None, Target::None) => true,
+                                        _ => false,
+                                    }
                                 } else {
+                                    false
+                                }
+                            };
+                            if drone.is_carrying_resource() {
+                                let is_returning = check_current_order(AbilityId::HarvestReturnDrone, Target::Tag(hatch.tag()));
+                                let distance = drone.position().distance(hatch.position());
+                                if distance >= path_dist / 2.0 && !is_returning {
+                                    if !is_returning {
+                                        drone.return_resource(false);
+                                    }
+                                } else if distance > hatch_radius + 1.0 {
+                                    if !check_current_order(AbilityId::Move, Target::Pos(hatch_near_pos)) {
+                                        drone.move_to(Target::Pos(hatch_near_pos), false);
+                                    }
+                                } else if !is_returning {
                                     drone.return_resource(false);
                                 }
                             } else {
+                                let is_gathering = check_current_order(AbilityId::HarvestGatherDrone, Target::Tag(resource_tag));
                                 let distance = drone.position().distance(resource.position());
                                 if distance >= path_dist / 2.0 {
-                                    drone.gather(resource_tag, false);
+                                    if !is_gathering {
+                                        drone.gather(resource_tag, false);
+                                    }
                                 } else if distance > res_radius + 1.0 {
-                                    drone.move_to(Target::Pos(resource_near_pos), false);
-                                } else {
+                                    if !check_current_order(AbilityId::MoveMove, Target::Pos(resource_near_pos)) {
+                                        drone.move_to(Target::Pos(resource_near_pos), false);
+                                    }
+                                } else if !is_gathering {
                                     drone.gather(resource_tag, false);
                                 }
                             }
@@ -396,7 +419,9 @@ impl FaxBot {
                 }
                 DroneTask::Idle => {
                     num_idle += 1;
-                    drone.stop(false);
+                    if drone.order().is_some() {
+                        drone.stop(false);
+                    }
                     task
                 }
                 _ => task,

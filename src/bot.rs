@@ -73,6 +73,7 @@ impl Player for FaxBot {
         self.state.desired_gasses = 2;
         self.state.desired_bases = 2;
         self.state.micro.enemy_base_locations_by_expansion_order = points;
+        self.state.determine_build_order(&self.runtime_options);
         self.state.map_info =
             crate::map::MapInfo::new(&self.game_info.pathing_grid, self.game_info.playable_area);
         println!("Started bot");
