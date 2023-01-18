@@ -91,20 +91,22 @@ impl FaxBot {
         researcher: UnitTypeId,
         upgrade: UpgradeId,
         ability: AbilityId,
-    ) {
-        if self.count_unit(researcher) > 0
+    ) -> bool {
+        let researchers = self
+            .units
+            .my
+            .all
+            .filter(|unit| unit.type_id() == researcher && unit.is_ready() && unit.orders().len() < 5);
+        if researchers.len() > 0
             && !self.has_upgrade(upgrade)
             && !self.is_ordered_upgrade(upgrade)
-            && self.can_afford_upgrade(upgrade)
         {
-            let researchers = self
-                .units
-                .my
-                .all
-                .filter(|unit| unit.is_ready() && unit.orders().len() < 5);
             if let Some(candidate) = researchers.min(|unit| unit.orders().len()) {
                 candidate.use_ability(ability, true);
             }
+            true
+        } else {
+            false
         }
     }
 
@@ -162,24 +164,23 @@ impl FaxBot {
         {
             // println!("{}: Want Hydra Den", _iteration);
             self.create_building(UnitTypeId::HydraliskDen, main_build_location, false);
-        } else {
-            did_attempt_build = false;
-        }
-        self.research_upgrade(
+        } else if (self.counter().count(UnitTypeId::Lair) > 0 && self.research_upgrade(
             UnitTypeId::RoachWarren,
             UpgradeId::GlialReconstitution,
             AbilityId::ResearchGlialRegeneration,
-        );
-        self.research_upgrade(
+        )) || self.research_upgrade(
             UnitTypeId::HydraliskDen,
             UpgradeId::EvolveGroovedSpines,
-            AbilityId::ResearchGroovedSpines,
-        );
-        self.research_upgrade(
-            UnitTypeId::HydraliskDen,
-            UpgradeId::EvolveMuscularAugments,
-            AbilityId::ResearchMuscularAugments,
-        );
+            AbilityId::ResearchGroovedSpines) ||
+            self.research_upgrade(
+                UnitTypeId::HydraliskDen,
+                UpgradeId::EvolveMuscularAugments,
+                AbilityId::ResearchMuscularAugments,
+            ) {
+            did_attempt_build = true;
+        } else {
+            did_attempt_build = false;
+        }
         Ok(did_attempt_build)
     }
 
