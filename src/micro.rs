@@ -317,6 +317,7 @@ impl FaxBot {
     fn move_drones(&mut self, iteration: usize) -> SC2Result<()> {
         let should_tryhard_mine = self.runtime_options.use_tryhard_mining;
         let workers = self.units.my.workers.clone();
+        let min_worker_tag = *workers.tags().min().unwrap_or(&0);
         let mut num_idle = 0usize;
         let mut num_construct = 0usize;
         for drone in workers {
@@ -330,7 +331,7 @@ impl FaxBot {
                     } else {
                         self.units.my.gas_buildings.filter(|u| u.vespene_contents().unwrap() > 0).contains_tag(resource_tag)
                     };
-                    if should_tryhard_mine {
+                    if self.time > 3.0 && should_tryhard_mine {
                         if !(resource_exists && hatch_exists) {
                             drone.stop(false);
                             DroneTask::Idle
@@ -339,7 +340,8 @@ impl FaxBot {
                             let hatch = hatch.unwrap();
                             let hatch_radius = hatch.radius();
                             let res_radius = resource.radius();
-                            let path_dist = resource.position().distance(hatch.position());
+                            let dist_between_centers = resource.position().distance(hatch.position());
+                            let path_dist = dist_between_centers - hatch_radius - res_radius;
                             let (hatch_near_pos, resource_near_pos) = Self::calc_line(hatch, resource);
                             let first_order = drone.order();
                             let check_current_order = |ability: AbilityId, target: Target| {
@@ -356,12 +358,12 @@ impl FaxBot {
                             };
                             if drone.is_carrying_resource() {
                                 let is_returning = check_current_order(AbilityId::HarvestReturnDrone, Target::Tag(hatch.tag()));
-                                let distance = drone.position().distance(hatch.position());
-                                if distance >= path_dist / 2.0 && !is_returning {
+                                let distance = drone.position().distance(hatch.position()) - hatch_radius;
+                                if distance >= path_dist * 0.4 {
                                     if !is_returning {
                                         drone.return_resource(false);
                                     }
-                                } else if distance > hatch_radius + 1.0 {
+                                } else if distance > 0.5 {
                                     if !check_current_order(AbilityId::Move, Target::Pos(hatch_near_pos)) {
                                         drone.move_to(Target::Pos(hatch_near_pos), false);
                                     }
@@ -370,17 +372,33 @@ impl FaxBot {
                                 }
                             } else {
                                 let is_gathering = check_current_order(AbilityId::HarvestGatherDrone, Target::Tag(resource_tag));
-                                let distance = drone.position().distance(resource.position());
-                                if distance >= path_dist / 2.0 {
+                                let distance = drone.position().distance(resource.position()) - res_radius;
+                                if drone.tag() == min_worker_tag {
+                                    // print!("Dist: {}/{} ", distance, path_dist);
+                                }
+                                if distance >= path_dist * 0.4 {
+                                    if drone.tag() == min_worker_tag {
+                                        // println!("Gather1");
+                                    }
                                     if !is_gathering {
                                         drone.gather(resource_tag, false);
                                     }
-                                } else if distance > res_radius + 1.0 {
+                                } else if distance > 0.5 {
+                                    if drone.tag() == min_worker_tag {
+                                        // println!("Gather2");
+                                    }
                                     if !check_current_order(AbilityId::MoveMove, Target::Pos(resource_near_pos)) {
                                         drone.move_to(Target::Pos(resource_near_pos), false);
                                     }
                                 } else if !is_gathering {
+                                    if drone.tag() == min_worker_tag {
+                                        // println!("Gather3");
+                                    }
                                     drone.gather(resource_tag, false);
+                                } else {
+                                    if drone.tag() == min_worker_tag {
+                                        // println!("Gather4");
+                                    }
                                 }
                             }
                             task
