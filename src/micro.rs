@@ -191,9 +191,14 @@ impl FaxBot {
             if let Some(nearest_queen) = queens
                 .filter(|u| u.distance(hatch) < 8.0)
                 .closest(hatch)
-                .map(|u| u.tag())
             {
-                queens.remove(nearest_queen);
+                queens.remove(nearest_queen.tag());
+                let hatch_pos = hatch.position();
+                let queen_pos = nearest_queen.position();
+                let vec_away = self.vec_away_from_resources(hatch_pos);
+                if (queen_pos - hatch_pos).dot(vec_away) < 0.0 {
+                    nearest_queen.attack(Target::Pos(hatch_pos + vec_away * hatch.radius()), false);
+                }
             } else {
                 unqueened_hatches.push(hatch);
             }

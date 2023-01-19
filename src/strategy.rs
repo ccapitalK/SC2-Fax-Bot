@@ -4,6 +4,14 @@ use crate::bot::FaxBot;
 use float_ord::FloatOrd;
 
 impl FaxBot {
+    pub fn vec_away_from_resources(&self, townhall: Point2) -> Point2 {
+        // Not using townhall.center because I don't trust it
+        let mut resource_positions: Vec<Point2> = self.units.resources.iter().map(|u| u.position()).filter(|p| p.distance(townhall) < 12.0).collect();
+        let sum: Point2 = resource_positions.iter().map(|p| *p - townhall).sum();
+        // default to up
+        let sum = if sum.len() <= 0.000001 { Point2 { x: 0.0, y: 1.0 } } else { sum.normalize() };
+        sum * -1.0
+    }
     fn num_attacking_enemies(&self, iteration: usize) -> usize {
         let structures = self.state.get_my_recent_structure_positions(iteration);
         let attacking_units = self.state.get_recent_enemy_spotted_information(iteration);
