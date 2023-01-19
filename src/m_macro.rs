@@ -102,7 +102,9 @@ impl FaxBot {
             && !self.is_ordered_upgrade(upgrade)
         {
             if let Some(candidate) = researchers.min(|unit| unit.orders().len()) {
-                candidate.use_ability(ability, true);
+                if self.can_afford_upgrade(upgrade) {
+                    candidate.use_ability(ability, true);
+                }
             }
             true
         } else {
@@ -209,8 +211,12 @@ impl FaxBot {
         false
     }
 
-    pub fn perform_training(&mut self, _iteration: usize) -> SC2Result<()> {
+    fn current_supply_goal(&self) -> usize {
         let num_hatcheries = self.count_unit(UnitTypeId::Hatchery);
+        std::cmp::min(self.supply_used as usize + 6 * num_hatcheries, 200)
+    }
+
+    pub fn perform_training(&mut self, _iteration: usize) -> SC2Result<()> {
         let has_roachwarren = self.counter().count(UnitTypeId::RoachWarren) > 0;
         let has_hydraden = self.counter().count(UnitTypeId::HydraliskDen) > 0;
         let is_mineral_starved = self.minerals < 200 && self.vespene > 800;
@@ -218,9 +224,7 @@ impl FaxBot {
         for l in self.units.my.larvas.idle() {
             let num_workers =
                 self.supply_workers as usize + self.counter().ordered().count(UnitTypeId::Drone);
-            if self.calculate_pending_supply()
-                < std::cmp::min(self.supply_used as usize + 6 * num_hatcheries, 200)
-            {
+            if self.time > 5.0 && self.calculate_pending_supply() < self.current_supply_goal() {
                 if self.can_afford(UnitTypeId::Overlord, false) {
                     l.train(UnitTypeId::Overlord, false);
                 }
