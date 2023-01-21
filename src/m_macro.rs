@@ -114,7 +114,7 @@ impl FaxBot {
 
     fn should_expand(&self) -> bool {
         let num_hatcheries = self.units.my.townhalls.len() + self.counter().ordered().count(UnitTypeId::Hatchery);
-        let desired_bases = if self.runtime_options.use_tryhard_mining && self.supply_used > 34 {
+        let desired_bases = if self.runtime_options.use_tryhard_mining && self.supply_used > 38 {
             self.state.desired_bases.max(3)
         } else {
             self.state.desired_bases

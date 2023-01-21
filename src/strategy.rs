@@ -70,7 +70,7 @@ impl FaxBot {
                         .units
                         .mineral_fields
                         .find_tags(&base.minerals)
-                        .filter(|u| u.mineral_contents().unwrap() <= 200)
+                        .filter(|u| u.mineral_contents().unwrap() <= 150)
                         .iter()
                         .count() as isize;
                     unaccounted_mineral_workers -= 2 * (num_mineral_slots - num_nearly_empty);
